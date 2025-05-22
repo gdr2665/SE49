@@ -1,11 +1,15 @@
 // File: com.softwareengineering.finsage.controllers.NormalVisionController.java
 package com.softwareengineering.finsage.controllers;
 
+import com.softwareengineering.finsage.dao.TransactionDao;
 import com.softwareengineering.finsage.model.Category;
 import com.softwareengineering.finsage.model.Transaction;
+import com.softwareengineering.finsage.utils.TransactionImporter;
 import com.softwareengineering.finsage.utils.UserLoginState;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -65,5 +69,19 @@ public class NormalVisionController {
 
     public boolean deleteTransaction(String transactionId) {
         return transactionController.deleteTransaction(transactionId);
+    }
+
+    public boolean importTransactions(Path filePath) {
+        try {
+            TransactionImporter importer = new TransactionImporter(
+                    new TransactionDao(),
+                    UserLoginState.getCurrentUserId()
+            );
+            importer.importFromCsv(filePath);
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }

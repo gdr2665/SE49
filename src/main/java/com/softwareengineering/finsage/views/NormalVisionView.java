@@ -1,18 +1,24 @@
 package com.softwareengineering.finsage.views;
 
 import com.softwareengineering.finsage.controllers.NormalVisionController;
+import com.softwareengineering.finsage.dao.TransactionDao;
 import com.softwareengineering.finsage.model.Category;
 import com.softwareengineering.finsage.model.Transaction;
+import com.softwareengineering.finsage.utils.TransactionImporter;
+import com.softwareengineering.finsage.utils.UserLoginState;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -250,7 +256,11 @@ public class NormalVisionView extends BorderPane {
             loadTransactions(); // Refresh the table after adding
         });
 
-        buttonBox.getChildren().add(addItemBtn);
+        // Add import button
+        Button importBtn = new Button("Import CSV");
+        importBtn.setOnAction(e -> handleImport());
+
+        buttonBox.getChildren().addAll(addItemBtn, importBtn);
 
         // Set layout
         setTop(filterGrid);
@@ -344,6 +354,44 @@ public class NormalVisionView extends BorderPane {
         loadTransactions(); // Refresh the table after editing
     }
 
+    private void handleImport() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Select CSV File to Import");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("CSV Files", "*.csv"),
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
+
+        File selectedFile = fileChooser.showOpenDialog(getScene().getWindow());
+        if (selectedFile != null) {
+            try {
+                TransactionImporter importer = new TransactionImporter(
+                        new TransactionDao(),
+                        UserLoginState.getCurrentUserId()
+                );
+
+                List<Transaction> imported = importer.importFromCsv(selectedFile.toPath());
+
+                // Show success message
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Import Successful");
+                alert.setHeaderText(null);
+                alert.setContentText("Successfully imported " + imported.size() + " transactions.");
+                alert.showAndWait();
+
+                // Refresh the table
+                loadTransactions();
+            } catch (IOException e) {
+                // Show error message
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Import Error");
+                alert.setHeaderText("Error importing transactions");
+                alert.setContentText("Could not import transactions: " + e.getMessage());
+                alert.showAndWait();
+            }
+        }
+    }
+
     private void deleteTransaction(Transaction transaction) {
         // Add confirmation dialog before deleting
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -365,4 +413,5 @@ public class NormalVisionView extends BorderPane {
             }
         }
     }
+
 }
