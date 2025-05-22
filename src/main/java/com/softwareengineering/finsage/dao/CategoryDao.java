@@ -61,4 +61,11 @@ public class CategoryDao extends BaseDao<Category> {
     public long countByUserId(String userId) {
         return getByUserId(userId).size();
     }
+
+    public Optional<Category> findById(String id) {
+        return getAll().stream()
+                .filter(c -> c.getId().equals(id))
+                .findFirst();
+    }
+
 }
