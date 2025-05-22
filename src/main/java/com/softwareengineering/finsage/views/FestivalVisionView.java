@@ -9,17 +9,19 @@ import com.softwareengineering.finsage.utils.InsightGenerator;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import javafx.util.Callback;
+import javafx.scene.paint.Color;
 import javafx.util.StringConverter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class FestivalVisionView extends BorderPane {
@@ -194,8 +196,8 @@ public class FestivalVisionView extends BorderPane {
     private void updatePieChart() {
         categoryPieChart.getData().clear();
 
-        // Group transactions by category and sum amounts
-        transactions.stream()
+        // Group transactions by category and sum amounts (using absolute values for expenses)
+        Map<String, BigDecimal> categoryTotals = transactions.stream()
                 .collect(java.util.stream.Collectors.groupingBy(
                         t -> {
                             Category category = controller.getCategoryById(t.getCategoryId());
@@ -203,18 +205,30 @@ public class FestivalVisionView extends BorderPane {
                         },
                         java.util.stream.Collectors.reducing(
                                 BigDecimal.ZERO,
-                                Transaction::getAmount,
+                                t -> t.getAmount().abs(),  // Use absolute value for all amounts
                                 BigDecimal::add
                         )
-                ))
-                .forEach((categoryName, totalAmount) -> {
-                    PieChart.Data slice = new PieChart.Data(
-                            categoryName,
-                            totalAmount.doubleValue()
-                    );
-                    categoryPieChart.getData().add(slice);
-                });
+                ));
+
+        // Only add slices for categories with positive totals
+        for (Map.Entry<String, BigDecimal> entry : categoryTotals.entrySet()) {
+            BigDecimal amount = entry.getValue();
+
+            // Skip zero or negative values (shouldn't occur since we're using abs())
+            if (amount.compareTo(BigDecimal.ZERO) > 0) {
+                PieChart.Data slice = new PieChart.Data(
+                        entry.getKey(),
+                        amount.setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue()
+                );
+                categoryPieChart.getData().add(slice);
+            }
+        }
+
+        // Set a minimum visible value to prevent tiny slices from appearing white
+        categoryPieChart.setStyle("-pie-min-visible-value: 0.1;");
     }
+
+    // Optional helper method to set custom colors for the pie chart slices
 
     private void updateSummaryLabels() {
         BigDecimal incomeSum = BigDecimal.ZERO;
